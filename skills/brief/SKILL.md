@@ -57,6 +57,8 @@ cat ~/.gwh/triage-$(date +%Y-%m-%d).md 2>/dev/null
 gws gmail +triage --max 30 --query 'is:unread' --format json
 ```
 
+> ⚠️ `resultSizeEstimate`는 추정치이며 201에서 포화된다. 출력 시 "약 {N}+통"으로 표기.
+
 간소화된 분류 (triage 스킬보다 가볍게):
 - 🔴 긴급 + 🟡 액션 필요 항목만 나열
 - 총 미읽음 수 + FYI/무시 가능 건수는 숫자만
