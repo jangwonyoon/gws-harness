@@ -137,9 +137,26 @@ MCP 미연결 시 구조화된 결과를 마크다운으로 출력:
 
 ---
 
-## Step 5: 산출물 저장
+## Step 5: 산출물 저장 (chmod inline)
 
-결과를 `~/.gwh/ticket-{date}-{subject-slug}.md`에 저장:
+```bash
+mkdir -p "$HOME/.gwh"
+chmod 0700 "$HOME/.gwh"
+
+OUT="$HOME/.gwh/ticket-$(date +%Y-%m-%d)-$SUBJECT_SLUG.md"
+write_ticket_output > "$OUT"
+chmod 0600 "$OUT"
+
+# sync-excluded 마커 (문서화 신호)
+[[ -f "$HOME/.gwh/.sync-excluded" ]] || {
+  echo "# gws-harness cache — do NOT sync" > "$HOME/.gwh/.sync-excluded"
+  chmod 0600 "$HOME/.gwh/.sync-excluded"
+}
+```
+
+결과 내용:
 - 원본 메일 요약
 - 생성된 티켓 정보 (키, URL)
 - 구조화된 내용
+
+> **v1.2 계획**: 2계정 환경에서 어느 계정 메일을 티켓화했는지 기록 + Jira/Notion 타겟 라우팅은 v1.2. 현재는 단일 계정 전제로 동작.
