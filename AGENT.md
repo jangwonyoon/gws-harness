@@ -122,8 +122,8 @@ gws calendar +insert --summary "제목" --start "2026-04-17T10:00:00" --end "202
 | 경로 | 조건 | 내용 |
 |------|------|------|
 | `{skill}-<account>-{date}.md` | 항상 | per-account 파일, 라벨 prefix 없음 |
-| `{skill}-{date}.md` (merged) | |ACCOUNTS| == 1 | per-account와 동일 포맷(라벨 없음, R8 하위호환) |
-| `{skill}-{date}.md` (merged) | |ACCOUNTS| >= 2 | frontmatter(`accounts_success/failed/generated_at`) + 라벨 prefix(`[🏢 work]` / `[👤 personal]`) |
+| `{skill}-{date}.md` (merged) | 계정 수 == 1 | per-account와 동일 포맷(라벨 없음, R8 하위호환) |
+| `{skill}-{date}.md` (merged) | 계정 수 >= 2 | frontmatter(`accounts_success/failed/generated_at`) + 라벨 prefix(`[🏢 work]` / `[👤 personal]`) |
 
 ### cal-plan (single-target write 예외)
 
