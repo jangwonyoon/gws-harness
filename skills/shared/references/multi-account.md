@@ -34,8 +34,10 @@ Related skills:
 # 1. config.yml에서 계정 name 목록 추출 (yq 또는 awk 폴백)
 ACCOUNT_NAMES=()
 if command -v yq &>/dev/null; then
+  # NOTE: `-f extract`는 markdown frontmatter 추출용 플래그. ~/.gwh/config.yml은
+  # plain YAML이므로 플래그 없이 순수 표현식만 전달한다.
   while IFS= read -r name; do ACCOUNT_NAMES+=("$name"); done \
-    < <(yq -f extract '.accounts | keys | .[]' ~/.gwh/config.yml)
+    < <(yq '.accounts | keys | .[]' ~/.gwh/config.yml)
 else
   while IFS= read -r name; do ACCOUNT_NAMES+=("$name"); done < <(awk '
     /^accounts:/ {in_acc=1; next}
@@ -48,7 +50,7 @@ fi
 ACCOUNTS=()
 ENROLLMENT_FAILS=()
 for name in "${ACCOUNT_NAMES[@]}"; do
-  EXPECTED=$(yq -f extract ".accounts.$name.verified_email" ~/.gwh/config.yml 2>/dev/null)
+  EXPECTED=$(yq ".accounts.$name.verified_email" ~/.gwh/config.yml 2>/dev/null)
   ACTUAL=$(GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$HOME/.config/gws-$name" \
            GOOGLE_WORKSPACE_CLI_KEYRING_BACKEND=file \
            gws auth status 2>/dev/null | jq -r '.user // empty')

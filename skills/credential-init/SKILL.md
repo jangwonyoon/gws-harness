@@ -31,11 +31,23 @@ gws-harness의 2계정(work/personal) 구조 진입점.
 
 ---
 
-## Step 0: 사전 확인 — `<name>` 검증
+## Step 0: 사전 확인
+
+### 0.1 gws CLI 설치 확인
+
+```bash
+command -v gws &>/dev/null || {
+  echo "❌ gws CLI가 설치되어 있지 않습니다."
+  echo "   설치: https://github.com/googleworkspace/cli"
+  exit 1
+}
+```
+
+> **왜 `gws auth status`는 여기서 체크하지 않나**: credential-init의 목적은 **새 계정을 등록**하는 것이다. 기존 계정이 이미 로그인되어 있으면 Step 1의 migration 추론에서 활용되고, 아예 미인증이면 Step 3의 `gws auth login`이 처리한다. Step 0에서 인증 상태를 막으면 정상 플로우가 차단된다.
+
+### 0.2 `<name>` 정규식 + reserved 검사
 
 사용자가 제공한 `<name>` (예: `work`, `personal`)을 검증.
-
-### 0.1 정규식 + reserved 검사
 
 ```bash
 NAME="$1"   # 예: work
@@ -52,7 +64,7 @@ case "$NAME" in
 esac
 ```
 
-### 0.2 symlink / 기존 비정상 엔트리 감지
+### 0.3 symlink / 기존 비정상 엔트리 감지
 
 ```bash
 TARGET="$HOME/.config/gws-$NAME"
@@ -63,7 +75,7 @@ if [[ -L "$TARGET" ]]; then
 fi
 ```
 
-### 0.3 macOS case-insensitive 충돌 체크
+### 0.4 macOS case-insensitive 충돌 체크
 
 ```bash
 # lowercase normalize 후 동일 inode에 매핑되는 다른 표기 dir 있는지 점검
@@ -259,6 +271,23 @@ esac
 
 `~/.gwh/config.yml` 손상 허용 불가 — partial write 상태는 모든 스킬의 security control을 silently 우회.
 
+### 5.1 yq hard dependency 확인
+
+config.yml write는 중복 엔트리/들여쓰기 실수 없이 atomic해야 하므로 `yq`(mikefarah)를 필수 의존성으로 요구한다:
+
+```bash
+command -v yq &>/dev/null || {
+  echo "❌ yq가 필요합니다 (mikefarah/yq v4+)."
+  echo "   macOS: brew install yq"
+  echo "   기타:  https://github.com/mikefarah/yq/#install"
+  exit 1
+}
+```
+
+> **왜 읽기는 awk 폴백 허용하고 쓰기만 yq 필수인가**: 읽기(triage/brief/digest/cal-plan의 Step 0.2)는 config.yml의 평문 구조를 단순 파싱 — awk로 충분하고 오작동해도 "해당 계정 skip" 정도로 degradation. 쓰기는 merge/upsert가 필요하고 실수 시 config.yml 손상 → 모든 스킬이 동시 고장. yq idempotent upsert(`yq -i '.accounts["name"] = {...}'`)가 중복/들여쓰기 모두 안전하게 처리한다.
+
+### 5.2 flock + atomic rename
+
 ```bash
 mkdir -p "$HOME/.gwh"
 chmod 0700 "$HOME/.gwh"
@@ -278,19 +307,8 @@ TMP="$CONFIG.tmp.$$"
     printf 'version: 1\naccounts:\n' > "$TMP"
   fi
 
-  # $NAME 엔트리 추가/갱신 (yq 있으면 yq, 없으면 awk/sed 폴백)
-  if command -v yq &>/dev/null; then
-    yq -i ".accounts[\"$NAME\"] = {\"verified_email\": \"$EMAIL\", \"label\": \"$LABEL\", \"config_dir\": \"$TARGET\", \"added_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" "$TMP"
-  else
-    # yq 미설치 폴백: 단순 append (중복 체크는 yq 권장)
-    cat >> "$TMP" <<EOF
-  $NAME:
-    verified_email: $EMAIL
-    label: $LABEL
-    config_dir: $TARGET
-    added_at: $(date -u +%Y-%m-%dT%H:%M:%SZ)
-EOF
-  fi
+  # yq idempotent upsert — 동일 $NAME 재등록 시 엔트리 교체(중복 방지)
+  yq -i ".accounts[\"$NAME\"] = {\"verified_email\": \"$EMAIL\", \"label\": \"$LABEL\", \"config_dir\": \"$TARGET\", \"added_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" "$TMP"
 
   chmod 0600 "$TMP"
   mv "$TMP" "$CONFIG"   # atomic rename

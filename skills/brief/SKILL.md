@@ -36,9 +36,63 @@ which gws
 
 ### 0.2 config.yml + ACCOUNTS 확정
 
-`/gwh:triage` Step 0.4와 동일 로직. 등록된 모든 계정에 대해 env-inject `gws auth status`로 enrollment 검증 후 `ACCOUNTS` 배열 확정. 인증된 계정이 0개면 `/gwh:credential-init` 안내 후 중단.
+`~/.gwh/config.yml`이 없으면 중단:
 
-> Unit B Step 0.4 코드 복사 (D7 — 3회+ 복사 시 references/multi-account.md로 extract 검토).
+```bash
+test -f ~/.gwh/config.yml || {
+  echo "❌ ~/.gwh/config.yml 이 없습니다. 먼저 /gwh:credential-init <name>으로 계정을 등록하세요."
+  exit 1
+}
+```
+
+등록된 모든 계정에 대해 env-inject `gws auth status`로 enrollment 검증 후 `ACCOUNTS` 배열 확정:
+
+```bash
+# 등록된 계정 name 목록 추출
+ACCOUNT_NAMES=()
+if command -v yq &>/dev/null; then
+  # plain YAML 파일이므로 `-f extract` 플래그 없이 표현식만 전달 (mikefarah/yq)
+  while IFS= read -r name; do ACCOUNT_NAMES+=("$name"); done < <(yq '.accounts | keys | .[]' ~/.gwh/config.yml)
+else
+  # yq 없으면 awk 폴백
+  while IFS= read -r name; do ACCOUNT_NAMES+=("$name"); done < <(awk '
+    /^accounts:/ {in_acc=1; next}
+    in_acc && /^[a-z0-9]/ {in_acc=0}
+    in_acc && /^  [a-z0-9][a-z0-9-]*:/ {gsub(/^  |:.*$/,""); print}
+  ' ~/.gwh/config.yml)
+fi
+
+ACCOUNTS=()
+ENROLLMENT_FAILS=()
+for name in "${ACCOUNT_NAMES[@]}"; do
+  if command -v yq &>/dev/null; then
+    EXPECTED=$(yq ".accounts.$name.verified_email" ~/.gwh/config.yml)
+  else
+    EXPECTED=$(awk -v n="$name" '
+      $0 ~ "^  " n ":" {in_n=1; next}
+      in_n && /^  [a-z0-9]/ {in_n=0}
+      in_n && /verified_email:/ {gsub(/.*verified_email: */,""); print; exit}
+    ' ~/.gwh/config.yml)
+  fi
+
+  ACTUAL=$(GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$HOME/.config/gws-$name" \
+           GOOGLE_WORKSPACE_CLI_KEYRING_BACKEND=file \
+           gws auth status 2>/dev/null | jq -r '.user // empty')
+
+  if [[ -n "$ACTUAL" && "$ACTUAL" == "$EXPECTED" ]]; then
+    ACCOUNTS+=("$name")
+  else
+    ENROLLMENT_FAILS+=("$name: expected=$EXPECTED actual=$ACTUAL")
+  fi
+done
+
+if [[ ${#ACCOUNTS[@]} -eq 0 ]]; then
+  echo "❌ 인증된 계정이 없습니다. /gwh:credential-init을 재실행하세요."
+  exit 1
+fi
+```
+
+> 이 블록은 `/gwh:triage` Step 0.4 및 `/gwh:digest`·`/gwh:cal-plan` Step 0.2와 동일 — SKILL.md self-containment를 위해 인라인 복사. 설계 배경은 [`skills/shared/references/multi-account.md § 1`](../shared/references/multi-account.md) 참조.
 
 ### 0.3 확장 기능 감지
 
