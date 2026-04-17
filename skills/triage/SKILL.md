@@ -1,0 +1,134 @@
+---
+name: gwh-triage
+description: >
+  Gmail 미읽음 메일을 중요도별로 분류하고 액션 아이템을 추출한다.
+  Use when "메일 정리", "메일 트리아지", "메일 확인해줘", "gmail triage",
+  "/gwh:triage", "안 읽은 메일", "메일 분류", "inbox zero".
+version: 1.0.0
+category: automation
+tags: [google-workspace, gmail, triage, productivity]
+triggers:
+  - "메일 정리"
+  - "메일 트리아지"
+  - "메일 확인해줘"
+  - "gmail triage"
+  - "안 읽은 메일"
+dependencies: []
+---
+
+# Gmail Triage
+
+미읽음 메일을 중요도별 4단계로 분류하고, 액션 아이템을 추출한다.
+
+---
+
+## Step 0: 사전 확인
+
+### 0.1 gws CLI 확인
+
+```bash
+which gws
+```
+미설치 시 → 안내 후 중단: "gws CLI가 필요합니다. https://github.com/googleworkspace/cli"
+
+### 0.2 인증 확인
+
+```bash
+gws auth status
+```
+미인증 시 → `gws auth login` 안내 후 중단.
+
+### 0.3 캐시 확인
+
+오늘 날짜의 산출물이 이미 있는지 확인:
+
+```bash
+cat ~/.gwh/triage-$(date +%Y-%m-%d).md 2>/dev/null
+```
+
+- 존재 → 사용자에게 "오늘 이미 트리아지 결과가 있습니다. 새로 실행할까요?" AskUserQuestion
+- 없음 → 진행
+
+---
+
+## Step 1: 미읽음 메일 조회
+
+```bash
+gws gmail +triage --max 50 --query 'is:unread' --format json
+```
+
+- `--max 50`: 최근 50통으로 제한 (토큰 절약)
+- JSON 결과를 파싱하여 발신자, 제목, 날짜, 스니펫 추출
+
+50통 초과 시:
+```
+📬 미읽음 메일 {N}통 중 최근 50통을 분석했습니다.
+나머지 {N-50}통은 `/gwh:triage`를 다시 실행하면 확인할 수 있습니다.
+```
+
+---
+
+## Step 2: 분류 기준
+
+각 메일을 다음 4단계로 분류:
+
+| 등급 | 기준 | 표시 |
+|------|------|------|
+| 🔴 긴급 | 장애/사고, 마감 임박(24h), 상위자 직접 요청 | 즉시 확인 필요 |
+| 🟡 액션 필요 | PR 리뷰, 문서 승인, 회신 요청, 미팅 일정 확인 | 오늘 중 처리 |
+| 🟢 FYI | 팀 공지, 변경 알림, 참고용 공유 | 읽기만 |
+| ⚪ 무시 가능 | 자동 알림, 뉴스레터, 마케팅, 스팸 | 아카이브 후보 |
+
+분류 근거:
+- **발신자 패턴**: noreply@, notifications@, newsletter@ → ⚪
+- **제목 키워드**: urgent, 긴급, ASAP, 장애 → 🔴 / review, 승인, 확인 → 🟡
+- **수신 유형**: To(직접) vs CC(참조) → CC는 한 단계 낮춤
+
+---
+
+## Step 3: 액션 아이템 추출
+
+🔴/🟡 등급 메일에서 액션 아이템을 추출:
+
+- **할 일**: "~해주세요", "확인 부탁", "리뷰 요청" 등
+- **마감일**: 날짜 패턴 감지 (오늘, 내일, 이번 주, 특정 날짜)
+- **대상**: Jira 티켓 번호, PR 번호, 문서 링크
+
+---
+
+## Step 4: 결과 출력
+
+```markdown
+# 📬 Gmail Triage — {YYYY-MM-DD}
+
+**미읽음 {N}통 분석 완료**
+
+## 🔴 긴급 ({N}건)
+1. **[발신자]** {제목}
+   → 액션: {추출된 할 일} | 마감: {마감일}
+
+## 🟡 액션 필요 ({N}건)
+1. **[발신자]** {제목}
+   → 액션: {추출된 할 일}
+
+## 🟢 FYI ({N}건)
+- [발신자] {제목}
+- ...
+
+## ⚪ 무시 가능 ({N}건)
+{총 N통} — 뉴스레터 {N}, 자동알림 {N}, 기타 {N}
+
+---
+**액션 요약:** 총 {N}건의 액션 아이템
+```
+
+---
+
+## Step 5: 산출물 저장
+
+```bash
+mkdir -p ~/.gwh
+```
+
+결과를 `~/.gwh/triage-{YYYY-MM-DD}.md`에 저장.
+이 파일은 `/gwh:brief`, `/gwh:mail-to-ticket` 등에서 재사용된다.
