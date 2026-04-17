@@ -3,3 +3,5 @@ task_plan.md
 harness_remediation_plan.md
 harness-report-*.md
 .gwh/
+eval/results/*
+!eval/results/.gitkeep
