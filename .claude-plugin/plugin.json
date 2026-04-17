@@ -1,8 +1,9 @@
 {
-  "name": "khc-gws-harness",
+  "name": "gws-harness",
   "description": "Google Workspace 하네스 — gws CLI 기반 Gmail 트리아지, 캘린더 타임블록, 아침 브리핑, 메일→티켓 변환, 주간 다이제스트",
   "version": "1.0.0",
   "author": {
-    "name": "khc"
+    "name": "jangwonyoon",
+    "url": "https://github.com/jangwonyoon"
   }
 }

@@ -1,4 +1,4 @@
-# khc-gws-harness
+# gws-harness
 
 Google Workspace 하네스 — `gws` CLI 기반 Claude Code 플러그인
 
@@ -23,9 +23,17 @@ gws auth status  # 인증 상태 확인
 
 ### 3. 플러그인 설치
 
-```bash
-claude plugin install khc-gws-harness
+Claude Code에서:
+
 ```
+# 1) 마켓플레이스 등록 (최초 1회)
+/plugin marketplace add jangwonyoon/gws-harness
+
+# 2) 플러그인 설치
+/plugin install gws-harness@gws-harness
+```
+
+설치 후 `/gwh:*` 명령이 활성화됩니다.
 
 ## 스킬 목록
 
