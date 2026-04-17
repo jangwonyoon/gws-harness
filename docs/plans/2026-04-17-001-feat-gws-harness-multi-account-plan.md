@@ -1,7 +1,7 @@
 ---
 title: "feat: gws-harness 2계정 지원 (work + personal)"
 type: feat
-status: active
+status: completed
 date: 2026-04-17
 deepened: 2026-04-17
 origin: docs/brainstorms/2026-04-17-gws-harness-multi-account-requirements.md
@@ -283,7 +283,7 @@ Origin R1-R15 전체를 6 units으로 매핑:
 
 ## Implementation Units
 
-- [ ] **Unit A: `/gwh:credential-init` 신규 스킬 (Migration 3-way + Security 초기화)**
+- [x] **Unit A: `/gwh:credential-init` 신규 스킬 (Migration 3-way + Security 초기화)**
 
 **Goal:** 사용자가 계정 등록 + 기존 `~/.config/gws/` auto-rename + Security 기본(config.yml atomic write, tmutil addexclusion, cloud-parent 감지) 한 번에 수행.
 
@@ -336,7 +336,7 @@ Origin R1-R15 전체를 6 units으로 매핑:
 
 ---
 
-- [ ] **Unit B: `/gwh:triage` 2계정 확장 (공유 패턴 레퍼런스)**
+- [x] **Unit B: `/gwh:triage` 2계정 확장 (공유 패턴 레퍼런스)**
 
 **Goal:** 2계정 병렬 fetch + merged 뷰 + 시간대 가중치 + partial merge 메타데이터. Unit C/D가 복사할 레퍼런스 구현.
 
@@ -394,7 +394,7 @@ Origin R1-R15 전체를 6 units으로 매핑:
 
 ---
 
-- [ ] **Unit C: `/gwh:brief` 2계정 확장 (triage 캐시 소비 + drift 감지)**
+- [x] **Unit C: `/gwh:brief` 2계정 확장 (triage 캐시 소비 + drift 감지)**
 
 **Goal:** brief가 merged triage 캐시 재사용(358배 성능) + 캐시 미스 시 2계정 fetch fallback + 단일→멀티 같은날 format drift 감지.
 
@@ -432,7 +432,7 @@ Origin R1-R15 전체를 6 units으로 매핑:
 
 ---
 
-- [ ] **Unit D: `/gwh:digest` 2계정 확장**
+- [x] **Unit D: `/gwh:digest` 2계정 확장**
 
 **Goal:** 주간 송수신 집계 N(=2)계정 병렬 fetch. Jira는 계정 중립.
 
@@ -468,7 +468,7 @@ Origin R1-R15 전체를 6 units으로 매핑:
 
 ---
 
-- [ ] **Unit E: `/gwh:cal-plan` 2계정 확장 (retry + fail-closed + override)**
+- [x] **Unit E: `/gwh:cal-plan` 2계정 확장 (retry + fail-closed + override)**
 
 **Goal:** 읽기는 2계정 병렬 fetch + 1회 retry + 재실패 시 `--force --account <X>` override 경로. 쓰기는 single-target (per-account 파일만, merged 미갱신).
 
@@ -514,7 +514,7 @@ Origin R1-R15 전체를 6 units으로 매핑:
 
 ---
 
-- [ ] **Unit F: Finalization (문서 + AGENT.md + version bump + mail-to-ticket security inline)**
+- [x] **Unit F: Finalization (문서 + AGENT.md + version bump + mail-to-ticket security inline)**
 
 **Goal:** 문서 일관성 + 버전 bump + `/gwh:mail-to-ticket`에도 최소 security(chmod + sync-excluded) 적용. 필요 시 D7 extract 결정.
 
