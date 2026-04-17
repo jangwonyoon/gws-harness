@@ -150,6 +150,39 @@ done
 
 > **왜 version 필드가 중요한가**: 플러그인은 마켓플레이스를 통해 자동 업데이트되므로 사용자의 `/gwh:*` 동작이 예기치 않게 바뀔 수 있다. Breaking change는 major bump.
 
+### PR 워크플로우
+
+모든 변경은 **feature 브랜치 → PR → merge** 흐름을 따른다. main 직접 푸시 금지.
+
+```bash
+# 1. 브랜치 생성
+git checkout -b feat/{short-name}
+
+# 2. 변경 + 커밋 (Conventional Commits)
+git commit -m "feat: ..."
+
+# 3. 푸시 + PR 생성
+git push -u origin feat/{short-name}
+gh pr create --fill
+```
+
+**커밋 prefix**:
+- `feat:` 새 스킬 추가, 새 기능
+- `fix:` 버그 수정
+- `refactor:` 동작 변경 없는 정리
+- `docs:` 문서만 수정
+- `chore:` 빌드/CI/의존성
+
+> **왜 PR 필수인가**: (1) GitHub Actions `validate.yml`이 merge 전에 frontmatter + markdownlint를 검증해 브로큰 배포 방지, (2) 변경 이력이 PR 단위로 그룹핑돼 revert 용이, (3) 외부 기여자 받을 때 동일 흐름 재사용.
+
+### Breaking Change 체크리스트
+
+version major bump 시:
+- [ ] `.claude-plugin/plugin.json` version 업데이트
+- [ ] `.claude-plugin/marketplace.json` metadata.version 업데이트
+- [ ] README에 마이그레이션 가이드 추가
+- [ ] PR title prefix: `feat!:` 또는 `BREAKING CHANGE:` footer 포함
+
 ---
 
 ## 참고
