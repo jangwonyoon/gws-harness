@@ -75,6 +75,8 @@ gws gmail +read --id {MESSAGE_ID} --format json --headers
 
 구조화된 결과를 AskUserQuestion으로 보여주고 승인:
 
+> **왜 자동 생성하지 않나**: LLM은 맥락 없이 "일단 티켓화"하는 경향이 있어 오버엔지니어링 위험 크다(예: 단순 린트 이슈도 Epic으로). 사용자가 "PR 직접 수정이 낫다" 같은 판단을 개입해야 하며, 실제 검증에서 CodeRabbit Autofix 존재 시 티켓 생성이 불필요함이 확인됨.
+
 ```markdown
 📋 티켓 미리보기
 

@@ -1,0 +1,61 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  markdown-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: markdownlint
+        uses: DavidAnson/markdownlint-cli2-action@v16
+        with:
+          globs: '**/*.md'
+          config: |
+            {
+              "default": true,
+              "MD013": false,
+              "MD033": false,
+              "MD041": false
+            }
+
+  frontmatter-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install yq
+        run: sudo snap install yq || sudo apt-get install -y yq || (wget -q https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq && sudo chmod +x /usr/local/bin/yq)
+      - name: Validate SKILL.md frontmatter
+        run: |
+          set -e
+          FAIL=0
+          for f in skills/*/SKILL.md; do
+            echo "Checking $f"
+            for field in name description version category triggers; do
+              value=$(yq -f extract ".$field" "$f" 2>/dev/null || echo "")
+              if [ -z "$value" ] || [ "$value" = "null" ]; then
+                echo "  ❌ Missing field: $field"
+                FAIL=1
+              fi
+            done
+            name=$(yq -f extract '.name' "$f")
+            if [[ ! "$name" =~ ^gwh- ]]; then
+              echo "  ❌ name must start with 'gwh-': got '$name'"
+              FAIL=1
+            fi
+          done
+          if [ "$FAIL" = "1" ]; then
+            echo ""
+            echo "Frontmatter validation failed. Refer to AGENTS.md for required fields."
+            exit 1
+          fi
+          echo "✅ All SKILL.md frontmatter valid"
+
+      - name: Validate plugin.json + marketplace.json
+        run: |
+          jq empty .claude-plugin/plugin.json
+          jq empty .claude-plugin/marketplace.json
+          echo "✅ Plugin metadata JSON valid"

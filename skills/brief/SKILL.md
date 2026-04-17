@@ -36,6 +36,8 @@ triage 스킬과 동일. `which gws` → `gws auth status`. 미설치/미인증 
 
 감지 실패해도 코어 기능(메일+캘린더)은 정상 동작.
 
+> **왜 런타임 감지인가**: Jira MCP가 없는 외부 사용자도 이 스킬을 쓸 수 있어야 한다(R6). 설정 파일 대신 런타임에 감지하면 사용자 설정 복잡도 0, 의존성 부재 시 graceful degradation.
+
 ### 0.3 triage 캐시 확인
 
 ```bash
@@ -44,6 +46,8 @@ cat ~/.gwh/triage-$(date +%Y-%m-%d).md 2>/dev/null
 
 - 존재 → Gmail API 재호출 없이 캐시 사용
 - 없음 → Step 1에서 Gmail 조회
+
+> **왜 캐시 재사용이 필수인가**: brief는 triage와 동일한 Gmail 쿼리를 재실행할 가능성이 크다. 실측 358배 속도 차(4ms vs 1,432ms) + API 쿼터 절감. 하루 단위 캐시는 triage 결과가 하루 중 크게 변하지 않는다는 가정에 근거.
 
 ---
 
