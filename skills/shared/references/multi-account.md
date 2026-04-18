@@ -181,7 +181,7 @@ chmod 0700 "$HOME/.gwh"
 chmod 0600 "$PATH_TO_FILE"
 ```
 
-`tmutil addexclusion -p` 와 cloud-parent REFUSE는 `/gwh:credential-init` Step 6에서 **1회 실행** (idempotent). 개별 스킬에서 재실행 불필요.
+`tmutil addexclusion` (user-level xattr 기반, sudo 불필요) 와 cloud-parent REFUSE는 `/gwh:credential-init` Step 6에서 **1회 실행** (idempotent). 개별 스킬에서 재실행 불필요.
 
 ### 사용 스킬
 

@@ -225,6 +225,8 @@ else
 fi
 ```
 
+> **재사용 실패 가능성**: 기존 `client_secret.json`의 OAuth client가 GCP Console에서 이미 삭제되었거나 invalid한 경우(401 `invalid_client`) Step 3.3에서 login이 실패한다. 이때는 `gws auth setup`을 재실행하여 새 client를 수동 생성해야 한다. Step 3.3 에러 핸들링 참조.
+
 ### 3.3 `gws auth login`
 
 ```bash
@@ -236,6 +238,14 @@ gws auth login
 > **keyring=file 배경**: 기본 Keychain backend는 계정별 격리가 어렵다.
 > file 백엔드는 `$TARGET/credentials.enc`와 암호화 키 파일을 모두 디렉토리 내부에 둔다.
 > Keychain 대비 보안이 하락하므로 Step 2의 `chmod 0700`과 Step 6의 `tmutil addexclusion`이 필수.
+
+> **Migration 후 재로그인 강제**: Step 1.5에서 기존 `~/.config/gws/`를 migrate한 경우, 그 안의 `credentials.enc`는 대개 Keychain 백엔드로 생성된 것이어서 `KEYRING_BACKEND=file`에서 **재해독 불가 → `auth_method: none`으로 나타남**. `gws auth login`을 반드시 재실행하여 file 백엔드로 refresh token을 다시 발급받는다.
+
+> **에러 핸들링 (401 `invalid_client`)**: `gws auth login`이 401 `invalid_client` 또는 "No OAuth client configured" 로 실패하면 client_secret.json의 OAuth client가 GCP Console에서 삭제/disabled 됐을 가능성이 크다. 다음 순서로 복구:
+>
+> 1. `https://console.cloud.google.com/apis/credentials?project=<project>` 에서 client 존재/활성 확인
+> 2. OAuth consent screen("대상" 탭) 게시 상태 확인 — Testing이면 현재 유저가 테스터 리스트에 있는지
+> 3. 없으면 새 **Desktop** OAuth client 생성 → JSON 다운로드 → `$TARGET/client_secret.json` 덮어쓰기 (`chmod 0600`) → `gws auth login` 재실행
 
 ---
 
@@ -286,39 +296,52 @@ command -v yq &>/dev/null || {
 
 > **왜 읽기는 awk 폴백 허용하고 쓰기만 yq 필수인가**: 읽기(triage/brief/digest/cal-plan의 Step 0.2)는 config.yml의 평문 구조를 단순 파싱 — awk로 충분하고 오작동해도 "해당 계정 skip" 정도로 degradation. 쓰기는 merge/upsert가 필요하고 실수 시 config.yml 손상 → 모든 스킬이 동시 고장. yq idempotent upsert(`yq -i '.accounts["name"] = {...}'`)가 중복/들여쓰기 모두 안전하게 처리한다.
 
-### 5.2 flock + atomic rename
+### 5.2 lockdir + atomic rename
 
 ```bash
 mkdir -p "$HOME/.gwh"
 chmod 0700 "$HOME/.gwh"
 
-LOCK="$HOME/.gwh/config.yml.lock"
+LOCK="$HOME/.gwh/config.yml.lock.d"
 CONFIG="$HOME/.gwh/config.yml"
 TMP="$CONFIG.tmp.$$"
 
-(
-  # flock으로 동시 credential-init 직렬화
-  flock -x 9
-
-  # 기존 config 읽거나 초기값
-  if [[ -f "$CONFIG" ]]; then
-    cp "$CONFIG" "$TMP"
-  else
-    printf 'version: 1\naccounts:\n' > "$TMP"
+# POSIX mkdir 원자성으로 cross-platform 직렬화 (macOS는 flock 미지원)
+# 10초 timeout으로 deadlock 방지
+TIMEOUT=10
+ELAPSED=0
+while ! mkdir "$LOCK" 2>/dev/null; do
+  if (( ELAPSED >= TIMEOUT )); then
+    echo "❌ config.yml lockdir 획득 실패 ($LOCK). 다른 credential-init이 진행 중이거나 stale lock."
+    echo "   stale 판단 후: rmdir '$LOCK' 수동 제거"
+    exit 1
   fi
+  sleep 0.2
+  ELAPSED=$((ELAPSED + 1))
+done
+# lockdir 자동 정리 (정상/에러 모두)
+trap 'rmdir "$LOCK" 2>/dev/null; rm -f "$TMP" 2>/dev/null' EXIT
 
-  # yq idempotent upsert — 동일 $NAME 재등록 시 엔트리 교체(중복 방지)
-  yq -i ".accounts[\"$NAME\"] = {\"verified_email\": \"$EMAIL\", \"label\": \"$LABEL\", \"config_dir\": \"$TARGET\", \"added_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" "$TMP"
+# 기존 config 읽거나 초기값
+if [[ -f "$CONFIG" ]]; then
+  cp "$CONFIG" "$TMP"
+else
+  printf 'version: 1\naccounts:\n' > "$TMP"
+fi
 
-  chmod 0600 "$TMP"
-  mv "$TMP" "$CONFIG"   # atomic rename
-) 9>"$LOCK"
+# yq idempotent upsert — 동일 $NAME 재등록 시 엔트리 교체(중복 방지)
+yq -i ".accounts[\"$NAME\"] = {\"verified_email\": \"$EMAIL\", \"label\": \"$LABEL\", \"config_dir\": \"$TARGET\", \"added_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" "$TMP"
+
+chmod 0600 "$TMP"
+mv "$TMP" "$CONFIG"   # atomic rename
 
 if [[ ! -f "$CONFIG" ]]; then
   echo "❌ config.yml write 실패"
   exit 1
 fi
 ```
+
+> **왜 flock 대신 mkdir lockdir**: `flock(1)`은 Linux util-linux 번들. macOS 기본 bash/zsh에는 미설치(brew install flock 필요). `mkdir`는 POSIX 필수 커맨드이고 원자적으로 실패하므로 cross-platform 직렬화에 적합. 10초 timeout + trap EXIT cleanup으로 stale lockdir 위험 제어.
 
 ---
 
@@ -349,12 +372,19 @@ done
 
 ```bash
 if command -v tmutil &>/dev/null; then
-  tmutil addexclusion -p "$HOME/.gwh" 2>/dev/null || true
-  # 확인 (옵션)
-  tmutil isexcluded "$HOME/.gwh" 2>/dev/null | grep -q 'Excluded.*TRUE' || \
-    echo "⚠️  tmutil addexclusion 확인 실패 (sudo 필요할 수 있음)"
+  # -p(path-based)는 sudo 필요 → user-level(xattr 기반)로 먼저 시도
+  tmutil addexclusion "$HOME/.gwh" 2>/dev/null || true
+  # 확인
+  if ! tmutil isexcluded "$HOME/.gwh" 2>&1 | grep -q 'Excluded'; then
+    echo "⚠️  tmutil addexclusion 실패 — xattr fallback 시도"
+    xattr -w com.apple.metadata:com_apple_backup_excludeItem 'com.apple.backupd' \
+      "$HOME/.gwh" 2>/dev/null || \
+      echo "⚠️  xattr fallback도 실패. 수동 실행 필요: sudo tmutil addexclusion -p '$HOME/.gwh'"
+  fi
 fi
 ```
+
+> **왜 `-p` 플래그 제거**: `tmutil addexclusion -p` (sticky path-based)는 root 권한 필요 — 일반 사용자 실행 시 silently 무시되어 `[Included]` 상태로 남는다. `tmutil addexclusion` (no flag)은 `com.apple.metadata:com_apple_backup_excludeItem` xattr을 디렉토리에 붙이는 **user-level exclusion**으로 sudo 불필요. path-based보다 약하지만(디렉토리가 이동되면 해제) `~/.gwh`는 고정 경로라 실무 영향 없음.
 
 ---
 
@@ -382,6 +412,6 @@ fi
 - [ ] `ls -ld ~/.config/gws-work` → `drwx------` (0700)
 - [ ] `stat -f '%p' ~/.gwh/config.yml` → `100600`
 - [ ] `~/.config/gws-<name>/credentials.enc` + 암호화 키 파일 모두 디렉토리 내부
-- [ ] `tmutil isexcluded ~/.gwh` → `Excluded: TRUE` (sudo 없이 확인 시 일부 환경에서 권한 이슈 가능)
+- [ ] `tmutil isexcluded ~/.gwh` → `Excluded` 포함 (user-level xattr 기반이므로 `TRUE/FALSE` 대신 `Excluded`/`Included` 문자열 확인)
 - [ ] `realpath ~/.gwh`가 known sync root 밖
 - [ ] Migration 후 `GOOGLE_WORKSPACE_CLI_CONFIG_DIR=~/.config/gws-<name> GOOGLE_WORKSPACE_CLI_KEYRING_BACKEND=file gws auth status | jq -r .user` 결과가 config.yml의 `verified_email`과 일치

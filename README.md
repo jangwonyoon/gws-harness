@@ -93,7 +93,7 @@ v1.1.0부터 계정별 credential이 `~/.config/gws-<name>/`에 격리되고, `~
 |------|------|----------|
 | `chmod 0700` | `~/.gwh/`, `~/.config/gws-*/` | `/gwh:credential-init`, 모든 스킬의 산출물 저장 Step |
 | `chmod 0600` | 모든 산출물 파일 + `config.yml` | 파일 생성 직후 inline |
-| `tmutil addexclusion -p` | `~/.gwh/` | `/gwh:credential-init` Step 6 (idempotent) |
+| `tmutil addexclusion` (user-level) | `~/.gwh/` | `/gwh:credential-init` Step 6 (idempotent, sudo 불필요) |
 | Cloud-parent REFUSE | `~/.gwh/` 경로 | `/gwh:credential-init` 실행 시 `realpath` 검사 |
 
 ### 수동 설정이 필요한 경우
