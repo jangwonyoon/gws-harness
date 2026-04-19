@@ -118,20 +118,32 @@ if [[ -f "$CACHE" ]]; then
 
   if [[ "$CURRENT" == "$CACHED_SORTED" ]]; then
     USE_CACHE=true
+  elif [[ -z "$CACHED_SORTED" ]]; then
+    # R8 하위호환 케이스: 단일 계정 triage merged는 frontmatter 없음
+    # CURRENT가 2계정 이상이면 triage가 구버전(단일 계정)에서 생성됨
+    DRIFT=true
+    USE_CACHE=true   # 캐시는 여전히 사용 (단일 계정 분량 정보만 있으므로 부분 커버)
+    if [[ ${#ACCOUNTS[@]} -ge 2 ]]; then
+      echo "⚠️ triage 캐시는 R8 포맷(단일 계정)으로 생성되었습니다."
+      echo "   현재 ACCOUNTS: [$CURRENT] (${#ACCOUNTS[@]}계정)"
+      echo "   완전한 2계정 통합을 위해 /gwh:triage 재실행 권장."
+    fi
   else
     DRIFT=true
+    USE_CACHE=true   # 주석 ↓ 명시: drift 있어도 캐시 사용 (사용자 선택에 맡김)
     echo "⚠️ triage 캐시는 [$CACHED_SORTED] 계정으로 생성되었습니다."
     echo "   현재 ACCOUNTS: [$CURRENT]"
     echo "   /gwh:triage를 재실행하여 캐시를 갱신하는 것을 권장합니다."
-    # drift는 경고만, brief는 캐시 사용 계속 (사용자 선택)
   fi
 fi
 ```
 
 - `USE_CACHE=true` → Step 1에서 캐시 경로 (4ms±δ)
-- 캐시 없음 또는 drift + 사용자 재실행 선택 → Step 1 fallback에서 2계정 병렬 fetch
+- 캐시 없음 → Step 1 fallback에서 2계정 병렬 fetch
 
-> **왜 drift만 경고하고 캐시는 쓰는가**: brief는 빠른 확인 용도 — 매번 재계산하면 358배 성능 이점이 무력화된다. 사용자에게 상태 가시성만 제공하고 재실행 판단은 맡긴다.
+> **왜 drift 시에도 캐시를 쓰는가**: brief는 빠른 확인 용도 — 매번 재계산하면 358배 성능 이점이 무력화된다. 사용자에게 상태 가시성만 제공하고 재실행 판단은 맡긴다. drift=true + USE_CACHE=true 조합은 "경고 후 캐시 사용" 명시적 선택이며, 주석과 코드 일관성을 위해 `USE_CACHE=true`를 양쪽 drift 분기에서 모두 설정한다.
+
+> **R8 포맷 감지 (CACHED_SORTED=="")**: 단일 계정 triage merged는 frontmatter 없이 per-account 파일 복사본이므로 accounts_success 추출 불가. 이 경우 `ACCOUNTS` 수를 기준으로 분기 — 2계정 이상 등록된 상태면 triage가 구버전 생성이라 배너 출력, 단일 계정이면 drift 아님(frontmatter 없어도 정상)으로 간주.
 
 ---
 
