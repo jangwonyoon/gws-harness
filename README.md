@@ -4,6 +4,48 @@ Google Workspace 하네스 — `gws` CLI 기반 Claude Code 플러그인
 
 Gmail 트리아지, 캘린더 타임블록, 아침 브리핑, 메일→티켓 변환, 주간 다이제스트를 대화형으로 제공합니다.
 
+---
+
+## 한눈에 보기
+
+### 무엇을 해주나
+
+매일 반복되는 Google Workspace 작업을 Claude Code에서 **자연어 한 줄**로 처리합니다.
+
+- **"메일 정리해줘"** → 미읽음 메일을 긴급/액션/FYI/무시 4단계로 분류 + 액션 아이템 추출
+- **"오늘 뭐해?"** → 메일 요약 + 캘린더 일정 + Jira 스프린트 상태를 한 장 브리핑
+- **"이번 주 타임블록 짜줘"** → Jira 티켓을 스토리 포인트 기반 시간 블록으로 캘린더에 자동 배치
+- **"이 메일 티켓으로"** → Gmail 메일에서 Jira 이슈 또는 Notion 페이지 자동 생성
+- **"이번 주 정리해줘"** → 메일 송수신 / 미팅 비중 / 완료 티켓 집계 + 인사이트
+
+### 누구에게 맞나
+
+- 매일 아침 "오늘 뭐부터 할지" 5분 안에 정리하고 싶은 실무자
+- **회사 + 개인 메일 2계정**을 한 번에 조회하고 싶은 사람 (v1.1.0+)
+- Jira 티켓을 캘린더에 미리 박아두는 스프린트 플래너
+- 주간 회고에 감이 아닌 숫자가 필요한 팀 리드 / PM
+- 오픈소스 사용자 — Jira/Notion 없이 Gmail + Calendar만으로도 동작
+
+### 차별점
+
+- **2계정 병렬 처리**: 회사 + 개인 메일/캘린더를 동시에 조회하되 쓰기는 단일 계정에만 (사고 방지)
+- **시간대 가중치**: 평일 09-18시엔 회사 메일 강조, 저녁/주말엔 개인 메일 강조 (시스템 시간대와 무관하게 한국 시간 기준)
+- **캐시 재사용**: 같은 날 두 번째 호출은 4밀리초 (첫 호출 대비 358배 빠름)
+- **쓰기 안전장치**: 메일 발송 / 캘린더 이벤트 생성 / 티켓 생성 등 모든 외부 쓰기는 사용자 승인 후 실행
+- **보안 기본값**: credential과 메일 캐시 폴더는 자동으로 `chmod 0700`, Time Machine 제외, iCloud/Dropbox 동기화 차단
+
+### 3단계로 시작하기
+
+```
+1. gws CLI 설치 + 인증
+2. /plugin marketplace add jangwonyoon/gws-harness
+3. /gwh:credential-init work   →  /gwh:triage
+```
+
+상세 사용 예시는 [docs/SCENARIOS.md](docs/SCENARIOS.md) 참조.
+
+---
+
 ## 사전 요구사항
 
 ### 1. gws CLI 설치
@@ -117,3 +159,13 @@ v1.1.0부터 계정별 credential이 `~/.config/gws-<name>/`에 격리되고, `~
 - **자동 migration**: 기존 `~/.config/gws/` 단일 경로 사용자는 `/gwh:credential-init <name>` 실행 시 3-way 분기로 안전 migration (AskUserQuestion 승인 경유, same-device 검증, SIGINT trap).
 - **경로 하드코딩 주의**: 외부 스크립트가 `~/.config/gws/`를 참조하고 있으면 migration 후 경로 조정 필요 (`~/.config/gws-<name>/`).
 - **merged 파일 호환**: 단일 계정 사용 시 기존 `~/.gwh/triage-{date}.md` 포맷 그대로 유지 (R8). 2계정 등록 시부터 라벨 prefix + frontmatter 포함.
+
+## 더 읽기
+
+| 문서 | 대상 독자 | 내용 |
+|------|----------|------|
+| [docs/USE_CASES.md](docs/USE_CASES.md) | 처음 써보는 사람 / 플러그인 검토자 | 페르소나 6개 × "누가 / 액션 플랜 / 아웃풋" 정리 |
+| [docs/SCENARIOS.md](docs/SCENARIOS.md) | 실제 사용 흐름이 궁금한 사람 | 월요일 아침부터 금요일 회고까지 구체적 대화 예시 6개 |
+| [AGENTS.md](AGENTS.md) | 기여자 / 새 스킬 추가하려는 사람 | 스킬 추가 절차, 네이밍 규칙, PR 워크플로우, 2계정 패턴 재사용 |
+| [AGENT.md](AGENT.md) | 오케스트레이터 동작 이해 | 자연어 요청이 어떤 `/gwh:*` 스킬로 라우팅되는지, 코어 vs 확장 구분 |
+| [skills/shared/references/multi-account.md](skills/shared/references/multi-account.md) | 2계정 구조 내부 동작 궁금한 사람 | 계정 인증 검증, 병렬 fetch, dual write, 보안 기본값 설계 배경 |
