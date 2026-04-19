@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# gws-json — run `gws` and emit clean JSON stdout.
+# Strips the "Using keyring" stdout pollution that breaks jq parsing.
+#
+# Usage:
+#   gws-json calendar list --format json
+#   gws-json mail list --format json | jq '.[] | .subject'
+#
+# Exit code mirrors the underlying `gws` command.
+
+set -euo pipefail
+
+if ! command -v gws >/dev/null 2>&1; then
+  echo "gws-json: 'gws' CLI not found in PATH" >&2
+  exit 127
+fi
+
+# Capture stdout; let stderr pass through for diagnostics.
+# Strip leading "Using keyring ..." lines which pollute jq-parseable output.
+gws "$@" | sed '/^Using keyring/d'
