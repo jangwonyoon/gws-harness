@@ -74,6 +74,18 @@ gws auth status
 
 > **왜 파일로 저장하나**: (1) 캐시 재사용으로 API 비용 감소 — triage 캐시 재사용 시 358배 빠름(1.4s → 4ms), (2) 스킬 간 의존성을 파일 경로로 느슨하게 연결, (3) 감사/디버깅 가능성.
 
+### 4.5. 2계정 패턴 (multi-account)
+
+새 스킬이 `~/.gwh/config.yml` 기반 2계정 구조와 상호작용해야 하면:
+
+1. **Step 0.4**에서 `shared/references/multi-account.md § 1`의 enrollment 검증을 인라인 복사
+2. 읽기 병렬화는 `§ 2` 2-branch 템플릿 복사 (`/tmp/gwh-<skill>-<account>-$$` prefix 필수)
+3. 출력 포맷은 `§ 3` R8 조건부 라벨 규칙 준수 (단일 계정 = 기존 포맷)
+4. 저장은 `§ 4` dual write 또는 cal-plan 스타일 single-target 중 적절한 쪽 선택
+5. 파일 권한은 `§ 5` chmod inline (0700 디렉토리 / 0600 파일)
+
+> **왜 인라인 복사인가**: 각 SKILL.md는 사용자가 독립적으로 읽는다(Claude가 하나의 스킬만 로드). `references/multi-account.md`는 "왜 이렇게 구현되었는가"의 단일 소스이지 실행 시 로드되는 의존성이 아니다.
+
 ### 5. 쓰기 작업 승인 게이트
 
 Gmail 쓰기(메일 보내기), Calendar 이벤트 생성, Jira 이슈 생성 등 **외부 시스템에 부작용을 일으키는 모든 작업**은 반드시:

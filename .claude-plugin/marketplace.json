@@ -5,16 +5,16 @@
     "url": "https://github.com/jangwonyoon"
   },
   "metadata": {
-    "description": "Google Workspace 하네스 — gws CLI 기반 Gmail 트리아지, 캘린더 타임블록, 크로스툴 파이프라인",
-    "version": "1.0.0"
+    "description": "Google Workspace 하네스 — gws CLI 기반 Gmail 트리아지, 캘린더 타임블록, 크로스툴 파이프라인 (2계정 지원)",
+    "version": "1.1.0"
   },
   "plugins": [
     {
       "name": "gws-harness",
       "source": "./",
-      "description": "Google Workspace CLI(gws) 기반 Claude Code 하네스. Gmail 트리아지, 캘린더 플래닝, 메일→티켓 변환, 주간 다이제스트를 /gwh:* 네임스페이스로 제공. Gmail+Calendar 코어 독립 동작, Jira/Notion optional 확장.",
+      "description": "Google Workspace CLI(gws) 기반 Claude Code 하네스. Gmail 트리아지, 캘린더 플래닝, 메일→티켓 변환, 주간 다이제스트를 /gwh:* 네임스페이스로 제공. 2계정(work+personal) 병렬 fetch + merged 뷰 지원. Gmail+Calendar 코어 독립 동작, Jira/Notion optional 확장.",
       "category": "productivity",
-      "tags": ["google-workspace", "gmail", "calendar", "gws", "harness", "productivity", "triage"]
+      "tags": ["google-workspace", "gmail", "calendar", "gws", "harness", "productivity", "triage", "multi-account"]
     }
   ]
 }
